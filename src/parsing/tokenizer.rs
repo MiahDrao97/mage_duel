@@ -106,7 +106,10 @@ fn parse_identifier_keyword_or_damage_type(first: char, chars: &mut Chars, next_
 
     let final_string: String = char_vec.into_iter().collect();
     if SYMBOLS.contains(&final_string.as_str()) {
-        return Tokens::Symbol(StringToken::from(final_string.clone()));
+        return Tokens::Symbol(StringToken::from(final_string));
+    }
+    else if let Ok(bool_token) = BoolToken::try_from(final_string.clone()) {
+        return Tokens::Boolean(bool_token);
     }
     else if let Ok(damage_type_token) = DamageTypeToken::try_from(final_string.clone()) {
         return Tokens::DamageType(damage_type_token);
@@ -120,10 +123,10 @@ fn parse_syntax(first: char, chars: &mut Chars, next_first: &mut impl AsMut<Opti
     } else if first == '=' {
         if let Some(next) = chars.next() {
             if next == '>' {
-                let token = StringToken::from("=>".to_string());
+                let token = StringToken::from("=>");
                 return Ok(Tokens::Symbol(token));
             } else if next == '=' {
-                let token = StringToken::from("==".to_string());
+                let token = StringToken::from("==");
                 return Ok(Tokens::Symbol(token));
             } else {
                 *next_first.as_mut() = Some(next);
@@ -140,7 +143,7 @@ fn parse_syntax(first: char, chars: &mut Chars, next_first: &mut impl AsMut<Opti
     } else if first == '+' {
         if let Some(next) = chars.next() {
             if next == '!' {
-                let token = StringToken::from("+!".to_string());
+                let token = StringToken::from("+!");
                 return Ok(Tokens::Symbol(token));
             } else {
                 *next_first.as_mut() = Some(next);
@@ -149,7 +152,7 @@ fn parse_syntax(first: char, chars: &mut Chars, next_first: &mut impl AsMut<Opti
     } else if first == '<' {
         if let Some(next) = chars.next() {
             if next == '=' {
-                let token = StringToken::from("<=".to_string());
+                let token = StringToken::from("<=");
                 return Ok(Tokens::Symbol(token));
             } else {
                 *next_first.as_mut() = Some(next);
@@ -158,7 +161,7 @@ fn parse_syntax(first: char, chars: &mut Chars, next_first: &mut impl AsMut<Opti
     } else if first == '>' {
         if let Some(next) = chars.next() {
             if next == '=' {
-                let token = StringToken::from(">=".to_string());
+                let token = StringToken::from(">=");
                 return Ok(Tokens::Symbol(token));
             } else {
                 *next_first.as_mut() = Some(next);
@@ -167,7 +170,7 @@ fn parse_syntax(first: char, chars: &mut Chars, next_first: &mut impl AsMut<Opti
     } else if first == '~' {
         if let Some(next) = chars.next() {
             if next == '=' {
-                let token = StringToken::from("~=".to_string());
+                let token = StringToken::from("~=");
                 return Ok(Tokens::Symbol(token));
             } else {
                 *next_first.as_mut() = Some(next);
