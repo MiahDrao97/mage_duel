@@ -1,12 +1,13 @@
 use core::str::Chars;
 use core::convert::From;
-use crate::{game_zones::types::DamageTypeParseError, parsing::tokens::*};
+use crate::{game_zones::types::{DamageTypeParseError, ParseDiceError}, parsing::tokens::*};
 
 #[derive(Debug)]
 pub enum TokenizerError {
     ParseBoolError(core::str::ParseBoolError),
     ParseIntError(std::num::ParseIntError),
     ParseDamageTypeError(DamageTypeParseError),
+    ParseDiceError(ParseDiceError),
     InvalidSyntax
 }
 
@@ -25,6 +26,12 @@ impl From<std::num::ParseIntError> for TokenizerError {
 impl From<DamageTypeParseError> for TokenizerError {
     fn from(err: DamageTypeParseError) -> Self {
         TokenizerError::ParseDamageTypeError(err)
+    }
+}
+
+impl From<ParseDiceError> for TokenizerError {
+    fn from(err: ParseDiceError) -> Self {
+        TokenizerError::ParseDiceError(err)
     }
 }
 
@@ -66,7 +73,8 @@ fn read_next_token(first: char, chars: &mut Chars, next_first: &mut impl AsMut<O
         let numeric_token = parse_numeric(first, chars, next_first)?;
         return Ok(numeric_token);
     } else if first.is_alphabetic() || first == '$' || first == '_' {
-        return Ok(parse_identifier_keyword_or_damage_type(first, chars, next_first));
+        let token = parse_identifier_keyword_or_damage_type(first, chars, next_first)?;
+        return Ok(token);
     } else {
         let syntax_token = parse_syntax(first, chars, next_first)?;
         return Ok(syntax_token);
@@ -91,10 +99,14 @@ fn parse_numeric(first: char, chars: &mut Chars, next_first: &mut impl AsMut<Opt
     Ok(Tokens::Numeric(int_token))
 }
 
-fn parse_identifier_keyword_or_damage_type(first: char, chars: &mut Chars, next_first: &mut impl AsMut<Option<char>>) -> Tokens {
+fn parse_identifier_keyword_or_damage_type(first: char, chars: &mut Chars, next_first: &mut impl AsMut<Option<char>>) -> Result<Tokens, TokenizerError> {
     let mut char_vec = vec![ first ];
 
     while let Some(next) = chars.next() {
+        if first == 'd' && next.is_numeric() {
+            char_vec.push(next);
+            return parse_dice_token(char_vec, chars, next_first);
+        }
         if next.is_alphanumeric() || next == '$' || next == '_' {
             char_vec.push(next);
         }
@@ -106,15 +118,30 @@ fn parse_identifier_keyword_or_damage_type(first: char, chars: &mut Chars, next_
 
     let final_string: String = char_vec.into_iter().collect();
     if SYMBOLS.contains(&final_string.as_str()) {
-        return Tokens::Symbol(StringToken::from(final_string));
+        return Ok(Tokens::Symbol(StringToken::from(final_string)));
     }
     else if let Ok(bool_token) = BoolToken::try_from(final_string.clone()) {
-        return Tokens::Boolean(bool_token);
+        return Ok(Tokens::Boolean(bool_token));
     }
     else if let Ok(damage_type_token) = DamageTypeToken::try_from(final_string.clone()) {
-        return Tokens::DamageType(damage_type_token);
+        return Ok(Tokens::DamageType(damage_type_token));
     }
-    Tokens::Identifier(StringToken::from(final_string))
+    Ok(Tokens::Identifier(StringToken::from(final_string)))
+}
+
+fn parse_dice_token(mut char_vec: Vec<char>, chars: &mut Chars, next_first: &mut impl AsMut<Option<char>>) -> Result<Tokens, TokenizerError> {
+    while let Some(next) = chars.next() {
+        if next.is_numeric() {
+            char_vec.push(next);
+        } else {
+            *next_first.as_mut() = Some(next);
+            break;
+        }
+    }
+    let final_string: String = char_vec.into_iter().collect();
+    let dice_token = DiceToken::try_from(final_string)?;
+
+    Ok(Tokens::Dice(dice_token))
 }
 
 fn parse_syntax(first: char, chars: &mut Chars, next_first: &mut impl AsMut<Option<char>>) -> Result<Tokens, TokenizerError> {

@@ -1,6 +1,6 @@
 use std::rc::Rc;
 use core::convert::{From, TryFrom};
-use crate::game_zones::types::{DamageType, DamageTypeParseError};
+use crate::game_zones::types::{DamageType, DamageTypeParseError, Dice, ParseDiceError};
 
 /// Reserved symbols and keywords in our lanaguage
 pub const SYMBOLS: [&'static str; 32] = [
@@ -48,7 +48,7 @@ pub trait Token<T> {
     fn get_value(self) -> T;
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BoolToken {
     string_value: Rc<str>,
     bool_value: bool
@@ -85,7 +85,7 @@ impl TryFrom<String> for BoolToken {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StringToken {
     string_value: Rc<str>
 }
@@ -118,7 +118,7 @@ impl From<String> for StringToken {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IntToken {
     string_value: Rc<str>,
     int_value: u16
@@ -155,7 +155,7 @@ impl TryFrom<String> for IntToken {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DamageTypeToken {
     string_value: Rc<str>,
     damage_type: DamageType
@@ -201,12 +201,41 @@ impl TryFrom<String> for DamageTypeToken {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DiceToken {
+    string_value: Rc<str>,
+    dice_value: Dice
+}
+
+impl TryFrom<&str> for DiceToken {
+    type Error = ParseDiceError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        let dice = Dice::try_from(value)?;
+        return Ok(DiceToken {
+            string_value: Rc::from(value),
+            dice_value: dice
+        });
+    }
+}
+
+impl TryFrom<String> for DiceToken {
+    type Error = ParseDiceError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        return DiceToken::try_from(value.as_str());
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
 /// The various token types
 pub enum Tokens {
     /// Token is a numerical value
     Numeric(IntToken),
     /// Token is an identifier
     Identifier(StringToken),
+    /// Token is a dice literal
+    Dice(DiceToken),
     /// Token is a static keyword or symbol
     Symbol(StringToken),
     /// Token is a damage type literal

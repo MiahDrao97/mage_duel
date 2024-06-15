@@ -2,7 +2,7 @@
 mod tests {
     use crate::game_zones::types::DamageType;
     use crate::parsing::tokenizer::tokenize;
-    use crate::parsing::tokens::{Token, Tokens};
+    use crate::parsing::tokens::{DamageTypeToken, DiceToken, IntToken, StringToken, Token, Tokens};
     use test_case::test_case;
     use std::mem::discriminant;
 
@@ -97,5 +97,90 @@ mod tests {
             assert!(matches!(vec[i], Tokens::Symbol(_)))
         }
         assert!(matches!(vec[expected_token_count - 1], Tokens::EOF));
+    }
+
+    #[test_case("in" ; "Parse in")]
+    #[test_case("if" ; "Parse if")]
+    #[test_case("else" ; "Parse else")]
+    #[test_case("for" ; "Parse for")]
+    #[test_case("from" ; "Parse from")]
+    #[test_case("target" ; "Parse target")]
+    #[test_case("func" ; "Parse func")]
+    fn tokenize_keywords(script: &str) {
+        let result = tokenize(script);
+
+        assert!(result.is_ok());
+        let vec = result.unwrap();
+
+        assert_eq!(vec.len(), 2);
+
+        if let Tokens::Symbol(keyword_token) = &vec[0] {
+            assert_eq!(keyword_token.clone().get_value(), String::from(script));
+        } else {
+            panic!("Expected to parse a keyword token.");
+        }
+        assert!(matches!(vec[1], Tokens::EOF));
+    }
+
+    #[test_case("// this is some stuff 1+1" ; "Parse comment")]
+    #[test_case("// this is some stuff 1+1 \n" ; "Parse comment newline")]
+    fn tokenize_comment(script: &str) {
+        let result = tokenize(script);
+
+        assert!(result.is_ok());
+        let vec = result.unwrap();
+        assert_eq!(vec.len(), 1);
+        assert!(matches!(vec[0], Tokens::EOF));
+    }
+
+    #[test]
+    fn tokenize_real_thing() {
+        let script = "\
+            #attack
+            [0]: {
+                // firebolt
+                $ = target(1 in Player);
+                1d4 + 4 fire => $;
+            }
+            ";
+        let result = tokenize(script);
+
+        assert!(result.is_ok());
+        let vec = result.unwrap();
+
+        let expected = [
+            Tokens::Symbol(StringToken::from("#")),
+            Tokens::Identifier(StringToken::from("attack")),
+            Tokens::Symbol(StringToken::from("[")),
+            Tokens::Numeric(IntToken::try_from("0").unwrap()),
+            Tokens::Symbol(StringToken::from("]")),
+            Tokens::Symbol(StringToken::from(":")),
+            Tokens::Symbol(StringToken::from("{")),
+            Tokens::Identifier(StringToken::from("$")),
+            Tokens::Symbol(StringToken::from("=")),
+            Tokens::Symbol(StringToken::from("target")),
+            Tokens::Symbol(StringToken::from("(")),
+            Tokens::Numeric(IntToken::try_from("1").unwrap()),
+            Tokens::Symbol(StringToken::from("in")),
+            Tokens::Identifier(StringToken::from("Player")),
+            Tokens::Symbol(StringToken::from(")")),
+            Tokens::Symbol(StringToken::from(";")),
+            Tokens::Numeric(IntToken::try_from("1").unwrap()),
+            Tokens::Dice(DiceToken::try_from("d4").unwrap()),
+            Tokens::Symbol(StringToken::from("+")),
+            Tokens::Numeric(IntToken::try_from("4").unwrap()),
+            Tokens::DamageType(DamageTypeToken::try_from("fire").unwrap()),
+            Tokens::Symbol(StringToken::from("=>")),
+            Tokens::Identifier(StringToken::from("$")),
+            Tokens::Symbol(StringToken::from(";")),
+            Tokens::Symbol(StringToken::from("}")),
+            Tokens::EOF
+        ];
+
+        assert_eq!(vec.len(), expected.len());
+
+        for i in 0 .. expected.len() {
+            assert_eq!(vec[i], expected[i]);
+        }
     }
 }
