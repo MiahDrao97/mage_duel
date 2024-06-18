@@ -93,7 +93,7 @@ mod tests {
         let vec = result.unwrap();
 
         assert_eq!(vec.len(), expected_token_count);
-        for i in 0..(expected_token_count-1) {
+        for i in 0 .. (expected_token_count-1) {
             assert!(matches!(vec[i], Tokens::Symbol(_)))
         }
         assert!(matches!(vec[expected_token_count - 1], Tokens::EOF));
