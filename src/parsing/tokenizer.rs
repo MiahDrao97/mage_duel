@@ -50,7 +50,7 @@ pub fn tokenize(script: &str) -> Result<Vec<Tokens>, TokenizerError> {
             }
             first = c;
         } else if let Some(c) = consume_white_space(&mut chars) {
-            first= c;
+            first = c;
         } else {
             break;
         }
